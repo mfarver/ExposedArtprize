@@ -66,7 +66,7 @@ class _AnimationControl:
 		self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 	def __call__(self, ani: Animations):
-		cs.sendto(ani.value+'\n', ('<broadcast>', self.MYPORT))
+		self._sock.sendto(ani.value+'\n', ('<broadcast>', self.MYPORT))
 
 AnimationControl = _AnimationControl()
 
@@ -135,3 +135,8 @@ def animation_controller():
 	finally:
 		# Oops, going away now. Shut things down.
 		AnimationControl(Animations.off)
+
+if __name__ == '__main__':
+	server = threading.Thread(target = ExposedHandler.run, name="httpd", daemon=True)
+	server.start()
+	animation_controller()
