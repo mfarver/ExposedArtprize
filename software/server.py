@@ -36,7 +36,7 @@ class _ServoControl:
 
 	def status(self) -> ServoStatus:
 		# TODO
-		return ServoControl.dunno
+		return ServoStatus.dunno
 
 	def position(self):
 		# TODO
@@ -66,7 +66,7 @@ class _AnimationControl:
 		self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 	def __call__(self, ani: Animations):
-		self._sock.sendto(ani.value+'\n', ('<broadcast>', self.MYPORT))
+		self._sock.sendto("{}\n".format(ani.value).encode("utf-8"), ('<broadcast>', self.MYPORT))
 
 AnimationControl = _AnimationControl()
 
