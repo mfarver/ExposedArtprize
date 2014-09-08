@@ -1,10 +1,13 @@
 #!/usr/bin/python3
-
+"""
+Coordinates motion with animations
+"""
 import http.server
 import enum # PyPI's enum34 if not on 3.4
 import socket
 import threading
 import time
+from animations import Animations
 
 class ServoStatus(enum.Enum):
 	dunno = 0
@@ -12,14 +15,6 @@ class ServoStatus(enum.Enum):
 	opened = 2
 	closing = 3
 	closed = 4
-
-class Animations(enum.Enum):
-	opening = "opening"
-	closing = "closing"
-	opened = "opened"
-	closed = "closed"
-	idle = "idle"
-	off = "off"
 
 class _ServoControl:
 	"""
@@ -65,7 +60,9 @@ class _AnimationControl:
 		self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-	def __call__(self, ani: Animations):
+	def __call__(self, ani: Animations, **kw):
+		if len(kw):
+			raise NotImplementedError
 		self._sock.sendto("{}\n".format(ani.value).encode("utf-8"), ('<broadcast>', self.MYPORT))
 
 AnimationControl = _AnimationControl()
