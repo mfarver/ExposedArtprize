@@ -34,16 +34,17 @@ class AnimationRunner:
 	default = None
 
 	def __iter__(self):
-		current = self.default()
+		frame = array.array('B', '\0' * LED_COUNT)
+		current = self.default(frame)
 		while True:
 			a = yield
 			if a is not None:
 				current.close()
-				current = a()
+				current = a(frame)
 			try:
 				frame = next(current)
 			except StopIteration:
-				current = self.default()
+				current = self.default(frame)
 			# TODO: Send frame
 
 
@@ -56,7 +57,7 @@ def animation(ani: Animations, *, default=False):
 	return _
 
 @animation(Animations.off, default=True)
-def ani_off():
+def ani_off(_):
 	while True:
 		yield b"\0" * LED_COUNT
 
