@@ -134,6 +134,6 @@ def animation_controller():
 		AnimationControl(Animations.off)
 
 if __name__ == '__main__':
-	server = threading.Thread(target = ExposedHandler.run, name="httpd", daemon=True)
+	server = threading.Thread(target=ExposedHandler.run, name="httpd", daemon=True)
 	server.start()
 	animation_controller()

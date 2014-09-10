@@ -6,6 +6,8 @@ import socket
 import array
 import time
 import math
+import queue
+import threading
 from animations import Animations
 
 MAX_VALUE = 255
@@ -36,6 +38,20 @@ class AnimationRunner:
 	anireg = {}
 	default = None
 
+	def __init__(self, slices):
+		self.slices = [
+			(sli, open(fn, 'wb'))
+			for sli, fn in slices
+		]
+
+	def spewframe(self, frame):
+		"""
+		Send a frame out to clients
+		"""
+		for sli,dev in self.slices:
+			# TODO: Perform byte reversal if slice.step < 0
+			dev.write("".join("{:02X}".format(b) for b in frame[sli]) + "\n")
+
 	def __iter__(self):
 		frame = array.array('B', '\0' * LED_COUNT)
 		current = self.default(frame)
@@ -52,7 +68,8 @@ class AnimationRunner:
 				frame = next(current)
 			except StopIteration:
 				current = self.default(frame)
-			# TODO: Send frame
+				frame = next(current)
+			self.spewframe(frame)
 
 
 def animation(ani: Animations, *, default=False):
@@ -83,9 +100,25 @@ def ani_sine(frame, *, length=50, freq=5.0):
 
 
 def main():
-	ar = AnimationRunner() # FIXME: pass options to define how to talk to LEDs
+	q = queue.Queue()
+	def datagrabber():
+		data= AnimationClient.getone()
+		try:
+			q.put(data)
+		except queue.Full:
+			# Discard data
+			pass
+
+	client = threading.Thread(target=datagrabber, name="netclient", daemon=True)
+	client.start()
+
+	ar = AnimationRunner([]) # FIXME: pass options to define how to talk to LEDs
 	ari = iter(ar)
 	while True:
-		a, kw = AnimationClient.getone()
-		ari.send(a, kw)
-		# FIXME: call next(ari) regularly
+		try:
+			a, kw = q.get_nowait()
+		except queue.Empty:
+			next(ari)
+		else:
+			ari.send(a, kw)
+		
