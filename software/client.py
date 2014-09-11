@@ -11,7 +11,7 @@ import threading
 from animations import Animations
 
 MAX_VALUE = 255
-LED_COUNT = 500*3
+LED_COUNT = 1000*3
 
 class _AnimationClient:
 	"""
@@ -111,24 +111,19 @@ def ani_sine(frame, *, length=50, freq=5.0):
 
 def ani_vque(frame, *, dir='out', width=3, rate=1.0):
 	mid = len(frame) // 2 # 0:mid, mid:-1
-	fwidth *= 2
+	fwidth = 2*width
 	if dir not in ('in', 'out'):
 		raise ValueError
+	offset = 0
+	group = lambda i: (i - mid) // width
 	while True:
-		if dir == 'out'
+		if dir == 'out':
 			offset = int(time.time() / rate) % fwidth
 		else:
 			# Year 2525
 			offset = int((17514144000 - time.time()) / rate) % fwidth
-		for grp in range(0, mid+1, fwidth):
-			for i in range(0, width):
-				frame[mid-grp-i-offset] = \
-				frame[mid+grp+i+offset] = \
-					MAX_VALUE
-			for i in range(width, fwidth+1):
-				frame[mid-grp-i-offset] = \
-				frame[mid+grp+i+offset] = \
-					0
+		for i in range(len(frame)):
+			frame[i] = MAX_VALUE if group(i) % 2 else 0
 		yield frame
 
 

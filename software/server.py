@@ -111,6 +111,7 @@ class ExposedHandler(http.server.BaseHTTPRequestHandler):
 		"""
 		server_address = ('', 8000)
 		httpd = server_class(server_address, cls)
+		print("Listening on {}".format(server_address))
 		httpd.serve_forever()
 
 def animation_controller(controller):
