@@ -109,6 +109,36 @@ def ani_sine(frame, *, length=50, freq=5.0):
 			frame[i] = round((math.sin(i / length * 2 * math.pi + cycle) + 1) * MAX_VALUE/2)
 		yield frame
 
+def ani_vque(frame, *, dir='out', width=3, rate=1.0):
+	mid = len(frame) // 2 # 0:mid, mid:-1
+	fwidth *= 2
+	if dir not in ('in', 'out'):
+		raise ValueError
+	while True:
+		if dir == 'out'
+			offset = int(time.time() / rate) % fwidth
+		else:
+			# Year 2525
+			offset = int((17514144000 - time.time()) / rate) % fwidth
+		for grp in range(0, mid+1, fwidth):
+			for i in range(0, width):
+				frame[mid-grp-i-offset] = \
+				frame[mid+grp+i+offset] = \
+					MAX_VALUE
+			for i in range(width, fwidth+1):
+				frame[mid-grp-i-offset] = \
+				frame[mid+grp+i+offset] = \
+					0
+		yield frame
+
+
+@animation(Animations.opening)
+def ani_opening(frame):
+	yield from ani_vque(frame, dir='out')
+
+@animation(Animations.closing)
+def ani_opening(frame):
+	yield from ani_vque(frame, dir='in')
 
 def main():
 	q = queue.Queue()
