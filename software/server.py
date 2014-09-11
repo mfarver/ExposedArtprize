@@ -22,6 +22,10 @@ class _ServoControl:
 	"""
 	# Hey, Rich! Can you fill this in?
 	enable = True
+	def __init__(self):
+		self.enabled = True
+		self.__state = ServoStatus.dunno
+
 	def enable(self):
 		self.enabled = True
 
@@ -31,7 +35,7 @@ class _ServoControl:
 
 	def status(self) -> ServoStatus:
 		# TODO
-		return ServoStatus.dunno
+		return self.__state
 
 	def position(self):
 		# TODO
@@ -40,12 +44,12 @@ class _ServoControl:
 	def go_open(self):
 		if self.enabled:
 			# TODO
-			pass
+			self.__state = ServoStatus.opening
 
 	def go_close(self):
 		if self.enabled:
 			# TODO
-			pass
+			self.__state = ServoStatus.closing
 
 ServoControl = _ServoControl()
 
@@ -53,7 +57,7 @@ class _AnimationControl:
 	"""
 	Talks to the network and changes the animation
 	"""
-	MYPORT = 0xEA00
+	MYPORT = 0xEA0
 
 	def __init__(self):
 		self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -75,11 +79,13 @@ class ExposedHandler(http.server.BaseHTTPRequestHandler):
 	"""
 	def send_full_response(self, status, content=None):
 		self.send_response(status)
-		self.send_header('Content-Type', 'text/plain')
-		self.send_header('Content-Length', len(content))
+		if content is not None:
+			self.send_header('Content-Type', 'text/plain; charset=utf-8')
+			self.send_header('Content-Length', len(content))
 		self.end_headers()
 		if content is not None:
-			return content
+			self.wfile.write(content.encode('utf-8'))
+			#return content
 
 	def do_GET(self):
 		return self.send_full_response(200, "{} {} {}".format(ServoControl.status().name, ServoControl.position(), ServoControl.enabled))
@@ -107,33 +113,33 @@ class ExposedHandler(http.server.BaseHTTPRequestHandler):
 		httpd = server_class(server_address, cls)
 		httpd.serve_forever()
 
-def animation_controller():
+def animation_controller(controller):
 	"""
 	Thread for converting motor state to animations, and then broadcasting it out.
 	"""
 	# Default animation
-	AnimationControl(Animations.idle)
+	controller(Animations.idle)
 	try:
 		while True:
 			s = ServoControl.status()
 			# Some kind of logic to turn states into animations
 			if s == ServoStatus.opening:
-				AnimationControl(Animations.opening)
+				controller(Animations.opening)
 			elif s == ServoStatus.opened:
-				AnimationControl(Animations.opened)
+				controller(Animations.opened)
 			elif s == ServoStatus.closing:
-				AnimationControl(Animations.closing)
+				controller(Animations.closing)
 			elif s == ServoStatus.closed:
-				AnimationControl(Animations.closed)
+				controller(Animations.closed)
 				# TODO: Time out back to idle
 			else:
-				AnimationControl(Animations.idle)
-			time.sleep(0) # Yield GIL
+				controller(Animations.idle)
+			time.sleep(0) # Yield
 	finally:
 		# Oops, going away now. Shut things down.
-		AnimationControl(Animations.off)
+		controller(Animations.off)
 
 if __name__ == '__main__':
 	server = threading.Thread(target=ExposedHandler.run, name="httpd", daemon=True)
 	server.start()
-	animation_controller()
+	animation_controller(AnimationControl)

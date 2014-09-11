@@ -53,12 +53,13 @@ class AnimationRunner:
 			dev.write("".join("{:02X}".format(b) for b in frame[sli]) + "\n")
 
 	def __iter__(self):
-		frame = array.array('B', '\0' * LED_COUNT)
-		current = self.default(frame)
+		frame = array.array('B', [0] * LED_COUNT)
+		current = type(self).default(frame)
 		while True:
 			akw = yield
 			if akw is not None:
 				a,kw = akw
+				print("Change: {} {}".format(a, kw))
 				if a in self.anireg:
 					a = self.anireg[a]
 				kw = kw or {}
@@ -67,7 +68,7 @@ class AnimationRunner:
 			try:
 				frame = next(current)
 			except StopIteration:
-				current = self.default(frame)
+				current = type(self).default(frame)
 				frame = next(current)
 			self.spewframe(frame)
 
@@ -95,7 +96,7 @@ def ani_sine(frame, *, length=50, freq=5.0):
 		offset = time.time() - zero
 		cycle = offset * multi
 		for i in range(len(frame)):
-			frame[i] = sin(i / length * 2 * math.pi + cycle) * MAX_VALUE
+			frame[i] = round((math.sin(i / length * 2 * math.pi + cycle) + 1) * MAX_VALUE/2)
 		yield frame
 
 
@@ -122,3 +123,5 @@ def main():
 		else:
 			ari.send(a, kw)
 		
+if __name__ == '__main__':
+	main()

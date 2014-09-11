@@ -40,9 +40,11 @@ void serialevent() {
   while (Serial.available()) {
     char in = Serial.read();
     if (in == '\n') { // End of frame, display
+      strip.setPixelColor(i, color);
       show = true;
-      i = 0;
       state = R_HIGH;
+      color = 0;
+      i = 0;
   } else {
     uint8_t val = 0;
     if ('0' <= in && in <= '9') {
