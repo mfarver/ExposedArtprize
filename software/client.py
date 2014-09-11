@@ -43,6 +43,7 @@ class AnimationRunner:
 			(sli, open(fn, 'wb'))
 			for sli, fn in slices
 		]
+		print(self.anireg)
 
 	def spewframe(self, frame):
 		"""
@@ -55,16 +56,25 @@ class AnimationRunner:
 	def __iter__(self):
 		frame = array.array('B', [0] * LED_COUNT)
 		current = type(self).default(frame)
+		old_akw = None
 		while True:
 			akw = yield
 			if akw is not None:
-				a,kw = akw
-				print("Change: {} {}".format(a, kw))
-				if a in self.anireg:
-					a = self.anireg[a]
-				kw = kw or {}
-				current.close()
-				current = a(frame, **kw)
+				if akw != old_akw:
+					if isinstance(akw, tuple):
+						a, kw = akw
+					else:
+						a, kw = akw, {}
+					print("Change: {} {}".format(a, kw))
+					if a in self.anireg:
+						a = self.anireg[a]
+					else:
+						print("Unknown animation: {}".format(a))
+						a = type(self).default
+					kw = kw or {}
+					current.close()
+					current = a(frame, **kw)
+					old_akw = akw
 			try:
 				frame = next(current)
 			except StopIteration:

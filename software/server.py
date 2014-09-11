@@ -142,4 +142,7 @@ def animation_controller(controller):
 if __name__ == '__main__':
 	server = threading.Thread(target=ExposedHandler.run, name="httpd", daemon=True)
 	server.start()
-	animation_controller(AnimationControl)
+	try:
+		animation_controller(AnimationControl)
+	except StopIteration:
+		pass
