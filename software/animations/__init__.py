@@ -3,6 +3,7 @@ import math
 import enum
 import random
 import collections
+import itertools
 
 MAX_VALUE = 255
 LED_COUNT = 1000*3
@@ -21,10 +22,28 @@ class _AniReg(collections.defaultdict):
 
 	def random(self, kind=...):
 		if kind is ...:
-			opts = set(self.items())
+			opts = set(itertools.chain(*self.items()))
 		else:
 			opts = set(self[kind])
 		return random.choice(list(opts))
+
+	def find(self, name):
+		for ls in self.items():
+			for func in ls:
+				if func.__name__ in (name, 'ani_'+name):
+					return func
+
+	def anis(self, kind=...):
+		if kind is ...:
+			opts = itertools.chain(*self.items())
+		else:
+			opts = self[kind]
+		for func in opts:
+			name = func.__name__
+			if name.startswith('ani_'):
+				name = name[4:]
+			yield name, func
+	
 
 AniReg = _AniReg()
 

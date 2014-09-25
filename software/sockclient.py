@@ -19,8 +19,8 @@ class SocketClient:
 			anireg = animations.AniReg
 		if self.sio:
 			self.sio.emit('pi_config', {
-				'open_animations': [func.__name__ for func in anireg[Animations.opening]],
-				'close_animations': [func.__name__ for func in anireg[Animations.closing]],
+				'open_animations': [name for name, _ in anireg.anis(Animations.opening)],
+				'close_animations': [name for name, _ in anireg.anis(Animations.opening)],
 				'key': self._key
 			})
 
@@ -34,20 +34,23 @@ class SocketClient:
 		self._stay_open = func
 
 	def on_power(self, data, _=None):
+		print("on_power", data)
 		if self._power:
 			self._power(data)
 
 	def on_animation(self, data, _=None):
+		print("on_animation", data)
 		if self._animation:
 			self._animation(data)
 
 	def on_stay_open(self, data, _=None):
+		print("on_stay_open", data)
 		if self.on_stay_open:
 			self.on_stay_open(data)
 
 
 	def run(self):
-		with SocketIO('http://artprize.herokuapp.com/raspi', 8000) as self.sio:
+		with SocketIO('artprize.herokuapp.com') as self.sio:
 			sio.on('power', self.on_power)
 			sio.on('animation', self.on_animation)
 			sio.on('stay_open', self.on_stay_open)

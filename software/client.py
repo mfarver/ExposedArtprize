@@ -6,6 +6,7 @@ import array
 import queue
 import threading
 import sys
+import os
 from animations import AniReg, LED_COUNT
 from sockclient import SocketClient
 from teensyframe import TeensyDisplay
@@ -40,7 +41,7 @@ class AnimationRunner:
 						a, kw = akw, {}
 					print("Change: {} {}".format(a, kw))
 					if a in AniReg:
-						a = AniReg[a]
+						a = AniReg.find(a)
 					else:
 						print("Unknown animation: {}".format(a))
 						a = AniReg.random(None)(frame)
@@ -68,7 +69,8 @@ def parseArg(args=None):
 def main():
 	q = queue.Queue()
 
-	sc = SocketClient(q)
+	sc = SocketClient(os.environ['EXPOSED_KEY'])
+
 
 	client = threading.Thread(target=sc.run, name="netclient", daemon=True)
 	client.start()
