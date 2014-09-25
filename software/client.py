@@ -2,60 +2,37 @@
 """
 Client that actually sends frames to LED strip
 """
-import socket
 import array
-import time
-import math
 import queue
 import threading
-from animations import Animations
+from animations import AniReg
+from sockclient import SocketClient
 
 MAX_VALUE = 255
 LED_COUNT = 1000*3
 
-class _AnimationClient:
-	"""
-	Talks to the network and changes the animation
-	"""
-	MYPORT = 0xEA00
-
-	def __init__(self):
-		self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-	def getone(self) -> (str, dict):
-		data = self._sock.recv(4*1024)
-		text = data.decode('utf-8')
-		if text.endswith('\n'):
-			text = text[:-1]
-		ani = Animations.__members__[text]
-		return ani, {}
-
-AnimationClient = _AnimationClient()
-
 class AnimationRunner:
-	anireg = {}
 	default = None
 
 	def __init__(self, slices):
 		self.slices = [
-			(sli, open(fn, 'wb'))
+			(sli, serial.Serial(fn))
 			for sli, fn in slices
 		]
-		print(self.anireg)
 
 	def spewframe(self, frame):
 		"""
 		Send a frame out to clients
 		"""
 		for sli,dev in self.slices:
-			# TODO: Perform byte reversal if slice.step < 0
-			dev.write("".join("{:02X}".format(b) for b in frame[sli]) + "\n")
+			dev.setRTS(True)
+			# TODO: do some frame flips if step < 0
+			dev.write(frame[sli])
+			dev.setRTS(False)
 
 	def __iter__(self):
-		frame = array.array('B', [0] * LED_COUNT)
-		current = type(self).default(frame)
+		frame = bytearray([0] * LED_COUNT)
+		current = AniReg.random(None)
 		old_akw = None
 		while True:
 			akw = yield
@@ -66,11 +43,11 @@ class AnimationRunner:
 					else:
 						a, kw = akw, {}
 					print("Change: {} {}".format(a, kw))
-					if a in self.anireg:
-						a = self.anireg[a]
+					if a in AniReg:
+						a = AniReg[a]
 					else:
 						print("Unknown animation: {}".format(a))
-						a = type(self).default
+						a = AniReg.random(None)
 					kw = kw or {}
 					current.close()
 					current = a(frame, **kw)
@@ -78,77 +55,26 @@ class AnimationRunner:
 			try:
 				frame = next(current)
 			except StopIteration:
-				current = type(self).default(frame)
+				current = AniReg.random(None)(frame)
 				frame = next(current)
 			self.spewframe(frame)
 
-
-def animation(ani: Animations, *, default=False):
-	def _(func):
-		AnimationRunner.anireg[ani] = func
-		if default:
-			AnimationRunner.default = func
-		return func
-	return _
-
-@animation(Animations.off)
-def ani_off(frame):
-	for i in range(len(frame)):
-		frame[i] = 0
-	while True:
-		yield frame
-
-@animation(Animations.idle, default=True)
-def ani_sine(frame, *, length=50, freq=5.0):
-	zero = time.time()
-	multi = 2 * math.pi / freq
-	while True:
-		offset = time.time() - zero
-		cycle = offset * multi
-		for i in range(len(frame)):
-			frame[i] = round((math.sin(i / length * 2 * math.pi + cycle) + 1) * MAX_VALUE/2)
-		yield frame
-
-def ani_vque(frame, *, dir='out', width=3, rate=1.0):
-	mid = len(frame) // 2 # 0:mid, mid:-1
-	fwidth = 2*width
-	if dir not in ('in', 'out'):
-		raise ValueError
-	offset = 0
-	group = lambda i: (i - mid) // width
-	while True:
-		if dir == 'out':
-			offset = int(time.time() / rate) % fwidth
-		else:
-			# Year 2525
-			offset = int((17514144000 - time.time()) / rate) % fwidth
-		for i in range(len(frame)):
-			frame[i] = MAX_VALUE if group(i) % 2 else 0
-		yield frame
-
-
-@animation(Animations.opening)
-def ani_opening(frame):
-	yield from ani_vque(frame, dir='out')
-
-@animation(Animations.closing)
-def ani_opening(frame):
-	yield from ani_vque(frame, dir='in')
+def parseArg(args=None):
+	if args is None:
+		args = sys.argv
+	for arg in args:
+		dev, sli = arg.split('=', 1)
+		yield dev, slice(*(int(i) if i else None for i in sli.split(':')))
 
 def main():
 	q = queue.Queue()
-	def datagrabber():
-		data= AnimationClient.getone()
-		try:
-			q.put(data)
-		except queue.Full:
-			# Discard data
-			pass
 
-	client = threading.Thread(target=datagrabber, name="netclient", daemon=True)
+	sc = SocketClient(q)
+
+	client = threading.Thread(target=sc.run, name="netclient", daemon=True)
 	client.start()
 
-	ar = AnimationRunner([]) # FIXME: pass options to define how to talk to LEDs
+	ar = AnimationRunner(list(parseArg())) # FIXME: pass options to define how to talk to LEDs
 	ari = iter(ar)
 	while True:
 		try:
