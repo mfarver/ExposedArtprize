@@ -3,6 +3,13 @@ import animations
 
 class SocketClient:
 	sio = None
+	_power = None
+	_animation = None
+	_stay_open = None
+
+	def __init__(self, key):
+		self._key = key
+
 	def state_change(self, state):
 		if self.sio:
 			self.sio.emit('state_change', {'state': state.name.upper()})
@@ -14,9 +21,19 @@ class SocketClient:
 			self.sio.emit('pi_config', {
 				'open_animations': [func.__name__ for func in anireg[Animations.opening]],
 				'close_animations': [func.__name__ for func in anireg[Animations.closing]],
+				'key': self._key
 			})
 
-	def on_animation(self, *args):
+	def power(self, func):
+		self._power = func
+
+	def animation(self, func):
+		self._power = func
+
+	def stay_open(self, func):
+		self._stay_open = func
+
+	def on_power(self, *args):
 		pass
 
 	def on_animation(self, *args):

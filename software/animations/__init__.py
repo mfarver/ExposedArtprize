@@ -4,6 +4,9 @@ import enum
 import random
 import collections
 
+MAX_VALUE = 255
+LED_COUNT = 1000*3
+
 class Animations(enum.Enum):
 	opening = "opening"
 	closing = "closing"
@@ -21,16 +24,16 @@ class _AniReg(collections.defaultdict):
 			opts = set(self.items())
 		else:
 			opts = set(self[kind])
-		return random.choose(opts)
+		return random.choice(list(opts))
 
 AniReg = _AniReg()
 
 
-def animation(ani=...: Animations, *, default=False):
+def animation(ani: Animations=..., *, default=False):
 	def _(func):
-		AniReg[ani] += func
+		AniReg[ani] += [func]
 		if default:
-			AniReg[None] += func
+			AniReg[None] += [func]
 		return func
 	return _
 

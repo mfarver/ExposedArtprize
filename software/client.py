@@ -5,11 +5,9 @@ Client that actually sends frames to LED strip
 import array
 import queue
 import threading
-from animations import AniReg
+import sys
+from animations import AniReg, LED_COUNT
 from sockclient import SocketClient
-
-MAX_VALUE = 255
-LED_COUNT = 1000*3
 
 class AnimationRunner:
 	default = None
@@ -32,7 +30,7 @@ class AnimationRunner:
 
 	def __iter__(self):
 		frame = bytearray([0] * LED_COUNT)
-		current = AniReg.random(None)
+		current = AniReg.random(None)(frame)
 		old_akw = None
 		while True:
 			akw = yield
@@ -47,7 +45,7 @@ class AnimationRunner:
 						a = AniReg[a]
 					else:
 						print("Unknown animation: {}".format(a))
-						a = AniReg.random(None)
+						a = AniReg.random(None)(frame)
 					kw = kw or {}
 					current.close()
 					current = a(frame, **kw)
@@ -61,7 +59,7 @@ class AnimationRunner:
 
 def parseArg(args=None):
 	if args is None:
-		args = sys.argv
+		args = sys.argv[1:]
 	for arg in args:
 		dev, sli = arg.split('=', 1)
 		yield dev, slice(*(int(i) if i else None for i in sli.split(':')))
