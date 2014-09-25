@@ -7,6 +7,7 @@ import queue
 import threading
 import sys
 import os
+import time
 from animations import AniReg, LED_COUNT
 from sockclient import SocketClient
 from teensyframe import TeensyDisplay
@@ -66,24 +67,58 @@ def parseArg(args=None):
 		dev, sli = arg.split('=', 1)
 		yield dev, slice(*(int(i) if i else None for i in sli.split(':')))
 
+class QueueDelay:
+	def __init__(self, q):
+		self.q = q
+		self.next = 0
+		self.insert = None
+		self.waiting = True
+
+	def update(self, t, a):
+		self.next = time.time() + t
+		self.insert = a
+		self.waiting = True
+
+	def run(self):
+		while True:
+			if self.waiting and self.next < time.time():
+				self.q.put(self.insert)
+				self.waiting = False
+			time.sleep()
+
 def main():
 	q = queue.Queue()
+	qd = QueueDelay(q)
 
 	sc = SocketClient(os.environ['EXPOSED_KEY'])
 
+	@sc.power
+	def power(data):
+		#data['level'], data['top_level']
+		pass
 
-	client = threading.Thread(target=sc.run, name="netclient", daemon=True)
-	client.start()
+	@sc.animation
+	def animation(data):
+		q.put(data['open_animation'])
+		qd.update(data['duration'], data['close_animation'])
 
-	ar = AnimationRunner(list(parseArg())) # FIXME: pass options to define how to talk to LEDs
+	@sc.stay_open
+	def stay_open(data):
+		qd.update(data['duration'], data['close_animation'])
+		pass
+
+	threading.Thread(target=sc.run, name="netclient", daemon=True).start()
+	threading.Thread(target=qd.run, name="queuedelay", daemon=True).start()
+
+	ar = AnimationRunner(list(parseArg()))
 	ari = iter(ar)
 	while True:
 		try:
-			a, kw = q.get_nowait()
+			a = q.get_nowait()
 		except queue.Empty:
 			next(ari)
 		else:
-			ari.send(a, kw)
+			ari.send(a)
 		
 if __name__ == '__main__':
 	main()
