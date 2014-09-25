@@ -8,25 +8,23 @@ import threading
 import sys
 from animations import AniReg, LED_COUNT
 from sockclient import SocketClient
+from teensyframe import TeensyDisplay
 
 class AnimationRunner:
 	default = None
 
 	def __init__(self, slices):
 		self.slices = [
-			(sli, serial.Serial(fn))
+			(sli, TeensyDisplay(fn))
 			for sli, fn in slices
 		]
 
 	def spewframe(self, frame):
 		"""
-		Send a frame out to clients
+		Send a frame out to devices
 		"""
 		for sli,dev in self.slices:
-			dev.setRTS(True)
-			# TODO: do some frame flips if step < 0
-			dev.write(frame[sli])
-			dev.setRTS(False)
+			dev.blt(frame[sli], flip=(sli.step < 0 if sli.step else False))
 
 	def __iter__(self):
 		frame = bytearray([0] * LED_COUNT)
@@ -58,6 +56,9 @@ class AnimationRunner:
 			self.spewframe(frame)
 
 def parseArg(args=None):
+	"""
+	Parses out arguments in the form of /dev/ttyACM0=1:3:5
+	"""
 	if args is None:
 		args = sys.argv[1:]
 	for arg in args:

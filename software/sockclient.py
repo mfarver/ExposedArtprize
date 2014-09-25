@@ -28,19 +28,22 @@ class SocketClient:
 		self._power = func
 
 	def animation(self, func):
-		self._power = func
+		self._animation = func
 
 	def stay_open(self, func):
 		self._stay_open = func
 
-	def on_power(self, *args):
-		pass
+	def on_power(self, data, _=None):
+		if self._power:
+			self._power(data)
 
-	def on_animation(self, *args):
-		pass
+	def on_animation(self, data, _=None):
+		if self._animation:
+			self._animation(data)
 
-	def on_stay_open(self, *args):
-		pass
+	def on_stay_open(self, data, _=None):
+		if self.on_stay_open:
+			self.on_stay_open(data)
 
 
 	def run(self):
